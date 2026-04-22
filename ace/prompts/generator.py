@@ -75,9 +75,9 @@ GENERATOR_PROMPT_RU = """Ты — эксперт-аналитик, задача 
 **Ответь строго в таком JSON-формате:**
 {{
   "reasoning": "[Цепочка рассуждений, детальный анализ]",
-  "considered_bullet_ids": ["calc-00001", "fin-00002"],
-  "used_bullet_ids": ["calc-00001"],
-  "final_answer": "[Краткий финальный ответ]"
+  "considered_bullet_ids": ["инст-00002", "пд-00015", "пд-00047"],
+  "used_bullet_ids": ["пд-00015"],
+  "final_answer": "15. Справка о наличии счёта"
 }}
 
 ---
