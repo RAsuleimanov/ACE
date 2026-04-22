@@ -1,0 +1,7 @@
+{
+    "vis_banking": {
+        "train_data": "./eval/vis_banking/data/train_errors.jsonl",
+        "val_data": "./eval/vis_banking/data/train.jsonl",
+        "test_data": "./eval/vis_banking/data/val.jsonl"
+    }
+}

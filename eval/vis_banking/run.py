@@ -15,8 +15,12 @@ Run from the ace/ repo root, e.g.:
         --save_path ../results/seed_baseline
 """
 import os
+import sys
 import json
 import argparse
+
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
 import yaml
 

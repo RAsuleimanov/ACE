@@ -937,39 +937,82 @@ def extract_json_from_text(text, json_key=None):
                     continue
 
         def find_json_objects(raw_text):
-            """Find JSON objects using balanced brace counting."""
+            """Find JSON objects using balanced brace counting.
+            Returns (json_str, is_repaired) tuples — repaired means closing brackets were appended."""
             json_objects = []
             i = 0
             while i < len(raw_text):
                 if raw_text[i] == "{":
                     brace_count = 1
+                    bracket_count = 0
                     start = i
                     i += 1
+                    in_string = False
 
                     while i < len(raw_text) and brace_count > 0:
-                        if raw_text[i] == "{":
-                            brace_count += 1
-                        elif raw_text[i] == "}":
-                            brace_count -= 1
-                        elif raw_text[i] == '"':
-                            i += 1
-                            while i < len(raw_text) and raw_text[i] != '"':
-                                if raw_text[i] == "\\":
-                                    i += 1
+                        if in_string:
+                            if raw_text[i] == "\\":
                                 i += 1
+                            elif raw_text[i] == '"':
+                                in_string = False
+                        else:
+                            if raw_text[i] == "{":
+                                brace_count += 1
+                            elif raw_text[i] == "}":
+                                brace_count -= 1
+                            elif raw_text[i] == "[":
+                                bracket_count += 1
+                            elif raw_text[i] == "]":
+                                bracket_count -= 1
+                            elif raw_text[i] == '"':
+                                in_string = True
                         i += 1
 
                     if brace_count == 0:
-                        json_objects.append(raw_text[start:i])
+                        json_objects.append((raw_text[start:i], False))
+                    elif brace_count > 0:
+                        # Truncated JSON — try to repair by closing open brackets/braces
+                        fragment = raw_text[start:i]
+                        # Strip trailing incomplete tokens (partial key/value after last comma)
+                        stripped = fragment.rstrip()
+                        if stripped.endswith(","):
+                            stripped = stripped[:-1]
+                        # Close any open arrays, then braces
+                        if bracket_count > 0:
+                            stripped += "]" * bracket_count
+                        stripped += "}" * brace_count
+                        json_objects.append((stripped, True))
                 else:
                     i += 1
 
             return json_objects
 
-        for json_str in find_json_objects(text):
+        for json_str, repaired in find_json_objects(text):
             try:
-                return json.loads(json_str)
+                result = json.loads(json_str)
+                if repaired:
+                    print(f"[extract_json] Repaired truncated JSON (appended closing brackets)")
+                return result
             except json.JSONDecodeError:
+                if repaired:
+                    # Try progressively stripping trailing content before the repair suffix
+                    # to handle mid-value truncation (e.g. truncated string literal)
+                    lines = json_str.split("\n")
+                    for trim in range(1, min(6, len(lines))):
+                        candidate = "\n".join(lines[:-trim]).rstrip().rstrip(",")
+                        # Recount braces/brackets
+                        bc = candidate.count("{") - candidate.count("}")
+                        bk = candidate.count("[") - candidate.count("]")
+                        if bk > 0:
+                            candidate += "]" * bk
+                        if bc > 0:
+                            candidate += "}" * bc
+                        try:
+                            result = json.loads(candidate)
+                            print(f"[extract_json] Repaired truncated JSON (trimmed {trim} lines + closed brackets)")
+                            return result
+                        except json.JSONDecodeError:
+                            continue
                 continue
 
     except Exception as exc:

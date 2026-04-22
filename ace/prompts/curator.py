@@ -8,6 +8,7 @@ CURATOR_PROMPT = """You are a master curator of knowledge. Your job is to improv
 **Context:**
 - The playbook you created will be used to help answering similar questions.
 - The reflection is generated using ground truth answers that will NOT be available when the playbook is being used. So you need to come up with content that can aid the playbook user to create predictions that likely align with ground truth.
+- Ground truth answers in reflections are regex patterns (e.g. `^39(?:\\.|$)` means the correct answer must start with "39"). Treat them as the authoritative correct label. If the model answered "3" but ground truth is `^39`, that is a REAL error (wrong document), not a formatting mismatch.
 
 **CRITICAL: You MUST respond with valid JSON only. Do not use markdown formatting or code blocks.**
 
@@ -23,11 +24,11 @@ CURATOR_PROMPT = """You are a master curator of knowledge. Your job is to improv
 - Format your response as a PURE JSON object with specific sections
 - For any operation if no new content to add, return an empty list for the operations field
 - Be concise and specific - each addition should be actionable
-- Length limit: each ADD/UPDATE `content` must be <= 500 characters. Prefer ~300. If guidance is genuinely multi-topic and won't fit, do NOT cram it into one bullet -- instead emit ARCHIVE on the old bullet + 2-3 ADD operations (one rule per bullet). Composition > monoliths.
-- Don't inflate long bullets: when UPDATE targets a bullet already >= 500 characters, the new content must NOT exceed the original length -- stay same or shrink. For shorter bullets some growth is acceptable if a genuinely new rule is added, but still respect the 500-char cap.
-- No decoration: plain Russian sentences only. Do NOT use emoji emphasis, ALL-CAPS headers, or stacked modal particles. Emphasis inflates length without adding signal and pollutes the generator's attention.
-- Body only: for ADD/UPDATE/MERGE `content`, return only the bullet body text. Do NOT include bullet IDs, metadata, leading patterns like `[inst-00001] ::`, or full serialized playbook lines.
-- Self-contained: write bullets so they stand on their own. Do NOT reference playbook bullet IDs inside `content`; inline the rule instead of writing things like `[inst-00036]`.
+- Length limit: each ADD/UPDATE `content` must be ≤ 500 characters. Prefer ~300. If guidance is genuinely multi-topic and won't fit, do NOT cram it into one bullet — instead emit ARCHIVE on the old bullet + 2-3 ADD operations (one rule per bullet). Composition > monoliths.
+- Don't inflate long bullets: when UPDATE targets a bullet already ≥ 500 characters, the new content must NOT exceed the original length — stay same or shrink. For shorter bullets some growth is acceptable if a genuinely new rule is added, but still respect the 500-char cap.
+- No decoration: plain Russian sentences only. Do NOT use ⭐, ⛔, ✅, emoji emphasis, ALL-CAPS headers ("КРИТИЧЕСКОЕ", "АБСОЛЮТНЫЙ", "ОБЯЗАТЕЛЬНОЕ", "ВАЖНОЕ"), or stacked modal particles. Emphasis inflates length without adding signal and pollutes the generator's attention.
+- Body only: for ADD/UPDATE/MERGE `content`, return only the bullet body text. Do NOT include bullet IDs, metadata, leading patterns like `[инст-00001] ::`, or full serialized playbook lines.
+- Self-contained: write bullets so they stand on their own. Do NOT reference playbook bullet IDs inside `content`; inline the rule instead of writing things like `[инст-00036]`.
 - Archive/merge safety: before emitting ARCHIVE or MERGE, ensure no surviving active bullet still depends on the archived/source bullet IDs. If dependencies exist, rewrite those bullets first or skip the ARCHIVE/MERGE.
 - No hallucinated IDs: do not invent unseen bullet IDs. Any invented or unseen ID reference will be rejected.
 
@@ -94,6 +95,7 @@ CURATOR_PROMPT_NO_GT = """You are a master curator of knowledge. Your job is to 
 **Context:**
 - The playbook you created will be used to help answering similar questions.
 - The reflection is generated using environment feedback that will NOT be available when the playbook is being used.
+- Ground truth answers in reflections are regex patterns (e.g. `^39(?:\\.|$)` means the correct answer must start with "39"). Treat them as the authoritative correct label. If the model answered "3" but ground truth is `^39`, that is a REAL error (wrong document), not a formatting mismatch.
 
 **CRITICAL: You MUST respond with valid JSON only. Do not use markdown formatting or code blocks.**
 
@@ -109,13 +111,13 @@ CURATOR_PROMPT_NO_GT = """You are a master curator of knowledge. Your job is to 
 - Format your response as a PURE JSON object with specific sections
 - For any operation if no new content to add, return an empty list for the operations field
 - Be concise and specific - each addition should be actionable
-- Length limit: each ADD/UPDATE `content` must be <= 500 characters. Prefer ~300.
-- Don't inflate long bullets: when UPDATE targets a bullet already >= 500 characters, the new content must NOT exceed the original length.
-- No decoration: plain Russian sentences only. Do NOT use emoji emphasis, ALL-CAPS headers, or stacked modal particles.
-- Body only: for ADD/UPDATE/MERGE `content`, return only the bullet body text. Do NOT include bullet IDs, metadata.
-- Self-contained: write bullets so they stand on their own. Do NOT reference playbook bullet IDs inside `content`.
-- Archive/merge safety: before emitting ARCHIVE or MERGE, ensure no surviving active bullet still depends on the archived/source bullet IDs.
-- No hallucinated IDs: do not invent unseen bullet IDs.
+- Length limit: each ADD/UPDATE `content` must be ≤ 500 characters. Prefer ~300. If guidance is genuinely multi-topic and won't fit, do NOT cram it into one bullet — instead emit ARCHIVE on the old bullet + 2-3 ADD operations (one rule per bullet). Composition > monoliths.
+- Don't inflate long bullets: when UPDATE targets a bullet already ≥ 500 characters, the new content must NOT exceed the original length — stay same or shrink. For shorter bullets some growth is acceptable if a genuinely new rule is added, but still respect the 500-char cap.
+- No decoration: plain Russian sentences only. Do NOT use ⭐, ⛔, ✅, emoji emphasis, ALL-CAPS headers ("КРИТИЧЕСКОЕ", "АБСОЛЮТНЫЙ", "ОБЯЗАТЕЛЬНОЕ", "ВАЖНОЕ"), or stacked modal particles. Emphasis inflates length without adding signal and pollutes the generator's attention.
+- Body only: for ADD/UPDATE/MERGE `content`, return only the bullet body text. Do NOT include bullet IDs, metadata, leading patterns like `[инст-00001] ::`, or full serialized playbook lines.
+- Self-contained: write bullets so they stand on their own. Do NOT reference playbook bullet IDs inside `content`; inline the rule instead of writing things like `[инст-00036]`.
+- Archive/merge safety: before emitting ARCHIVE or MERGE, ensure no surviving active bullet still depends on the archived/source bullet IDs. If dependencies exist, rewrite those bullets first or skip the ARCHIVE/MERGE.
+- No hallucinated IDs: do not invent unseen bullet IDs. Any invented or unseen ID reference will be rejected.
 
 
 **Training Context:**

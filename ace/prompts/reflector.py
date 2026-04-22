@@ -35,7 +35,7 @@ Your output should be a json object, which contains the following fields
 **Model's Predicted Answer:**
 {}
 
-**Ground Truth Answer:**
+**Ground Truth Answer (regex pattern — e.g. `^39` means the correct answer starts with "39"):**
 {}
 
 **Environment Feedback:**

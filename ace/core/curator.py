@@ -3,9 +3,13 @@ Curator agent for ACE system.
 Manages playbook operations (ADD, UPDATE, MERGE, ARCHIVE).
 """
 
+import builtins
+import functools
 import json
 from pathlib import Path
 from typing import Any, Optional
+
+print = functools.partial(builtins.print, flush=True)
 
 from llm import timed_llm_call
 from logger import log_curator_failure, log_curator_operation_diff
