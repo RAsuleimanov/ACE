@@ -52,6 +52,7 @@ save_steps: 10
 test_workers: 10
 batch_size: 5
 max_tokens: 8192
+json_mode: true
 
 # ── BulletpointAnalyzer ─────────────────────────────────────────────
 # api: prefix → вызов /v1/embeddings через curator_client (internal_openai).
