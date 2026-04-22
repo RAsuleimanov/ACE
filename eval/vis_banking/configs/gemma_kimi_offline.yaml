@@ -1,0 +1,57 @@
+task_name: vis_banking
+mode: offline
+api_provider: openrouter
+
+generator_model: google/gemma-4-31b-it
+reflector_model: moonshotai/kimi-k2.5          # C1: stronger reflector (paper §4.6 says reflector quality matters)
+curator_model: moonshotai/kimi-k2.5             # C2: stronger curator → cleaner ADDs, fewer garbage bullets
+
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: /Users/jlocehok/ace_experiment/results/ace_offline_clean
+
+# Paper §4.2 main settings + §A.6 best ablation values:
+num_epochs: 3                          # shortened from paper-spec 5 — ~3h wall-clock
+max_num_rounds: 3                      # paper Table 19 best: +14.3pp
+curator_frequency: 1                   # now means "run curator every N batches" (was per-sample); aggregated reflections fix
+
+eval_steps: 137 
+                       # = len(train) → val после каждой эпохи
+save_steps: 10                          # checkpoint every 5 train steps for soft-resume
+test_workers: 10
+
+batch_size: 5                          # gen/reflect parallel 5-wide; one curator call per batch on aggregated 5 reflections (was 10 with 48% duplicate UPDATEs)
+
+max_tokens: 12288                      # Kimi K2.5 reasoning tokens eat ~3-5K; default 4096 обрезает 20% curator calls mid-JSON
+
+use_bulletpoint_analyzer: true         # paper §3.2 grow-and-refine
+# Embedder: remote BGE-M3 via OpenRouter API (DeepInfra/Parasail).
+# Prefix "api:" switches BulletpointAnalyzer from local sentence-transformers
+# (which OOM'd on MPS when Cursor/Chrome held 15 GB of the 20 GB pool)
+# to HTTP /v1/embeddings. Cost ~$0.01 per 3-epoch run, zero MPS footprint.
+# Threshold 0.82 tested on real bullets — matches local BGE-M3 distribution.
+bulletpoint_analyzer_model: api:baai/bge-m3
+bulletpoint_analyzer_threshold: 0.82
+bulletpoint_analyzer_bm25_threshold: 0.15      # AND-gate lexical: ratio-of-self BM25
+bulletpoint_analyzer_block_cross_section: true # B4: не сливать между секциями (инст+то = word salad)
+
+playbook_token_budget: 50000           # soft guidance to curator — deterministic prune does real enforcement
+
+# Deterministic lifecycle prune (fork §3.2 grow-and-refine):
+# Note: section_cap and helpful-guard were loosened when we thought used_bullet_ids
+# were working; actually they weren't (ASCII-only regex on Cyrillic IDs). After
+# the generator.py extractor fix, those safety-nets are unnecessary — fork defaults
+# restored for cap + guard. Warmup kept generous for rare-class tolerance.
+prune_max_active_bullets_per_section: 40   # fork default
+prune_warmup_window: 275                   # kept from loosened config — one epoch of grace for rare classes
+prune_min_observations: 3                  # fork default
+
+# Kimi K2.5 reasoning control (tested empirically via OpenRouter, Apr 2026):
+#   {"enabled": false}           → 0 reasoning tokens, 7s per call (vs 25-64s default). Tested.
+#   {"effort": "low"}            → ~2K reasoning tokens (vs 2.5K default). Minor savings.
+#   {"exclude": true}            → hides reasoning but STILL BILLS it. Trap — don't use.
+# For shallow classification like ViS banking routing, thinking adds little:
+# reflector is pattern-match (tag helpful/harmful), curator is mostly ADD with occasional judgment.
+reflector_reasoning: null                  # default Kimi reasoning — was acceptable latency-wise in earlier runs (~110s vs curator 157s)
+curator_reasoning: null                    # default — 1 aggregated call per batch of 5 reflections makes reasoning affordable + crucial for holistic decisions
+analyzer_reasoning: {"enabled": false}     # merge prompt is formulaic rewrite; reasoning pure waste

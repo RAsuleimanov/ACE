@@ -1,0 +1,39 @@
+task_name: vis_banking
+mode: offline
+api_provider: openrouter
+
+generator_model: google/gemma-4-31b-it
+reflector_model: z-ai/glm-5
+curator_model: z-ai/glm-5
+
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: /Users/jlocehok/ace_experiment/results/ace_paper_clean
+
+# Paper-faithful settings: sequential training, no batching
+num_epochs: 3
+max_num_rounds: 3
+curator_frequency: 1
+batch_size: 1                             # sequential — one sample at a time, as in paper
+
+eval_steps: 137                           # val eval ~twice per epoch (275/2)
+save_steps: 10
+test_workers: 5                           # reduced from 10 — OpenRouter drops connections at concurrency 10
+
+max_tokens: 12288
+
+use_bulletpoint_analyzer: true
+bulletpoint_analyzer_model: api:baai/bge-m3
+bulletpoint_analyzer_threshold: 0.82
+bulletpoint_analyzer_bm25_threshold: 0.15
+bulletpoint_analyzer_block_cross_section: true
+
+playbook_token_budget: 50000
+
+prune_max_active_bullets_per_section: 40
+prune_warmup_window: 275
+prune_min_observations: 15
+
+reflector_reasoning: {"enabled": false}
+curator_reasoning: {"enabled": false}
+analyzer_reasoning: {"enabled": false}

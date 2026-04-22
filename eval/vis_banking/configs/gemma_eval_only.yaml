@@ -1,0 +1,13 @@
+task_name: vis_banking
+mode: eval_only
+api_provider: openrouter
+
+generator_model: google/gemma-4-31b-it
+reflector_model: google/gemma-4-31b-it
+curator_model: google/gemma-4-31b-it
+
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: /Users/jlocehok/ace_experiment/results/seed_baseline
+
+test_workers: 5

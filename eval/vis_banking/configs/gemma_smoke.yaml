@@ -1,0 +1,30 @@
+task_name: vis_banking
+mode: offline
+api_provider: openrouter
+
+# All-Gemma для быстрого теста analyzer+merge поведения
+generator_model: google/gemma-4-31b-it
+reflector_model: google/gemma-4-31b-it
+curator_model: google/gemma-4-31b-it
+
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: /Users/jlocehok/ace_experiment/results/ace_smoke
+
+num_epochs: 1                          # короткий тест
+max_num_rounds: 3                      # slightly trimmed для скорости
+curator_frequency: 1
+eval_steps: 275                        # = len(train) → val в конце эпохи
+
+save_steps: 10
+test_workers: 10
+batch_size: 10
+
+use_bulletpoint_analyzer: true
+bulletpoint_analyzer_threshold: 0.82           # из test_analyzer_live — рабочая точка для BGE-M3
+bulletpoint_analyzer_bm25_threshold: 0.15      # AND-gate lexical
+
+playbook_token_budget: 50000
+prune_protect_helpful_threshold: 3
+prune_protected_sections:
+  - перечень_документов

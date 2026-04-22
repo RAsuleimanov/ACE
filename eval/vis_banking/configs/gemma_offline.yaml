@@ -1,0 +1,32 @@
+task_name: vis_banking
+mode: offline
+api_provider: openrouter
+
+generator_model: google/gemma-4-31b-it
+reflector_model: moonshotai/kimi-k2.5          # C1: stronger reflector (paper §4.6 says reflector quality matters)
+curator_model: moonshotai/kimi-k2.5             # C2: stronger curator → cleaner ADDs, fewer garbage bullets
+
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: /Users/jlocehok/ace_experiment/results/ace_offline_mixed
+
+# Paper §4.2 main settings + §A.6 best ablation values:
+num_epochs: 2                          # shortened from paper-spec 5 — ~3h wall-clock
+max_num_rounds: 3                      # paper Table 19 best: +14.3pp
+curator_frequency: 1                   # paper: 1 (curator after each sample)
+
+eval_steps: 275                        # = len(train) → val после каждой эпохи
+save_steps: 10                          # checkpoint every 5 train steps for soft-resume
+test_workers: 10
+
+batch_size: 10                         # parallel gen/reflect+curator (paper §3.1 blesses delta merging)
+
+use_bulletpoint_analyzer: true         # paper §3.2 grow-and-refine
+bulletpoint_analyzer_threshold: 0.90   # paper Table 20 best: 78.6%
+
+playbook_token_budget: 50000           # A1: bumped 20K→50K — paper Table 21 tied 10/50/100K; 29 classes+rules+keywords need room
+
+# Prune protection (our extensions):
+prune_protect_helpful_threshold: 3     # A2: was hardcoded 5; rare classes (1-2 train examples) can now reach protection
+prune_protected_sections:              # A3: doc taxonomy is structural, never prune
+  - перечень_документов
