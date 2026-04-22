@@ -3,7 +3,11 @@ import os
 import re
 import json
 import openai
-import tiktoken
+try:
+    import tiktoken
+    _tiktoken_available = True
+except Exception:
+    _tiktoken_available = False
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple, Optional
@@ -223,9 +227,18 @@ def extract_answer(response):
         
         return "No final answer found"
     
-enc = tiktoken.get_encoding("cl100k_base")
+_enc = None
 def count_tokens(prompt: str) -> int:
-    return len(enc.encode(prompt))
+    global _enc
+    if _tiktoken_available:
+        if _enc is None:
+            try:
+                _enc = tiktoken.get_encoding("cl100k_base")
+            except Exception:
+                pass
+        if _enc is not None:
+            return len(_enc.encode(prompt))
+    return len(prompt) // 3
 
 
 EVAL_ERROR_SENTINEL = "INCORRECT_DUE_TO_EVALUATION_ERROR"

@@ -1,7 +1,7 @@
 # Core ACE dependencies
 openai>=1.0.0
 python-dotenv>=1.0.0
-tiktoken>=0.12.0
+# tiktoken>=0.12.0  # optional — needs internet to download encoding on first use; falls back to len//3
 pyyaml>=6.0
 
 # GigaChat (langchain wrapper + low-level SDK)
