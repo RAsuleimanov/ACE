@@ -1148,6 +1148,8 @@ class ACE:
                         )
                         with open(intermediate_path, "w", encoding="utf-8") as f:
                             f.write(self.playbook)
+                            f.flush()
+                            os.fsync(f.fileno())
 
                     if step % eval_steps == 0:
                         print(f"\n{'='*40}\nEVALUATION AT EPOCH {epoch}, STEP {step}\n{'='*40}")
@@ -1347,8 +1349,10 @@ class ACE:
                     intermediate_path = os.path.join(
                         playbook_dir, f"epoch_{epoch}_step_{step}_playbook.txt"
                     )
-                    with open(intermediate_path, "w") as f:
+                    with open(intermediate_path, "w", encoding="utf-8") as f:
                         f.write(self.playbook)
+                        f.flush()
+                        os.fsync(f.fileno())
                 
                 # Periodic evaluation
                 if step % eval_steps == 0:
