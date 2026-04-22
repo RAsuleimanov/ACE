@@ -1,0 +1,20 @@
+# Core ACE dependencies
+openai>=1.0.0
+python-dotenv>=1.0.0
+tiktoken>=0.12.0
+pyyaml>=6.0
+
+# GigaChat (langchain wrapper + low-level SDK)
+langchain-gigachat>=0.3.0
+gigachat>=0.1.28
+langchain-core>=0.3.0
+
+# BulletpointAnalyzer — local embeddings (no internet)
+# Скачай веса BGE-M3 заранее: python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.4
+rank-bm25>=0.2.2
+scikit-learn>=1.0.0
+
+# Internal OpenAI-compatible endpoints (vLLM/TGI) use the openai SDK above.
+# together / sambanova НЕ нужны на корп машине.

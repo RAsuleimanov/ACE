@@ -1,0 +1,69 @@
+task_name: vis_banking
+mode: offline
+
+# ── Provider routing ─────────────────────────────────────────────────
+# api_provider is the default; per-role overrides below.
+api_provider: gigachat
+
+generator_provider: gigachat
+reflector_provider: internal_openai     # vLLM / TGI на внутренней машине
+curator_provider: internal_openai
+
+# ── GigaChat (mTLS) ─────────────────────────────────────────────────
+gigachat:
+  base_url: https://gigachat-ift.sberdevices.delta.sbrf.ru/v1
+  model: GigaChat-2-Max
+  verify_ssl_certs: false
+  cert_file: .certs/cert_agents.txt
+  key_file: .certs/key_agents.txt
+  profanity_check: false
+  repetition_penalty: 1
+  timeout: 120
+
+# ── Internal OpenAI-compatible endpoint ──────────────────────────────
+# Подставь свой IP и модель. api_key_env = имя env-переменной с ключом
+# (или "dummy" если эндпоинт без авторизации).
+internal_openai:
+  base_url: http://10.27.60.9:2717/v1
+  api_key_env: INTERNAL_LLM_API_KEY
+  timeout: 120
+
+# ── Models ───────────────────────────────────────────────────────────
+generator_model: GigaChat-2-Max
+reflector_model: qwen32b                # имя модели на vLLM
+curator_model: qwen32b
+
+# ── Paths ────────────────────────────────────────────────────────────
+initial_playbook_path: eval/vis_banking/data/seed_playbook.md
+config_path: ./eval/vis_banking/data/task_config.json
+save_path: ./results/gigachat_internal
+
+# ── Training loop ────────────────────────────────────────────────────
+num_epochs: 3
+max_num_rounds: 3
+curator_frequency: 1
+eval_steps: 137
+save_steps: 10
+test_workers: 10
+batch_size: 5
+max_tokens: 8192
+
+# ── BulletpointAnalyzer ─────────────────────────────────────────────
+# Локальный BGE-M3 (без интернета). Убедись что веса скачаны заранее.
+use_bulletpoint_analyzer: true
+bulletpoint_analyzer_model: BAAI/bge-m3
+bulletpoint_analyzer_threshold: 0.82
+bulletpoint_analyzer_bm25_threshold: 0.15
+bulletpoint_analyzer_block_cross_section: true
+
+# ── Prune / budget ──────────────────────────────────────────────────
+playbook_token_budget: 50000
+prune_max_active_bullets_per_section: 40
+prune_warmup_window: 275
+prune_min_observations: 3
+
+# ── Reasoning ────────────────────────────────────────────────────────
+# null = дефолт модели. Для GigaChat reasoning пока не поддерживается.
+reflector_reasoning: null
+curator_reasoning: null
+analyzer_reasoning: null

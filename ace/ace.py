@@ -47,28 +47,30 @@ class ACE:
         curator_reasoning: Optional[dict] = None,
         analyzer_reasoning: Optional[dict] = None,
         bulletpoint_analyzer_model: str = 'BAAI/bge-m3',
+        generator_provider: Optional[str] = None,
+        reflector_provider: Optional[str] = None,
+        curator_provider: Optional[str] = None,
+        gigachat_config: Optional[dict] = None,
+        internal_openai_config: Optional[dict] = None,
     ):
-        """
-        Initialize the ACE system.
-        
-        Args:
-            api_provider: API provider for LLM calls
-            generator_model: Model name for generator
-            reflector_model: Model name for reflector
-            curator_model: Model name for curator
-            max_tokens: Maximum tokens for LLM calls
-            initial_playbook: Initial playbook content (optional)
-            use_bulletpoint_analyzer: Whether to use bulletpoint analyzer for deduplication
-            bulletpoint_analyzer_threshold: Similarity threshold for bulletpoint analyzer (0-1)
-        """
         # Initialize API clients
-        generator_client, reflector_client, curator_client = initialize_clients(api_provider)
+        generator_client, reflector_client, curator_client = initialize_clients(
+            api_provider,
+            generator_provider=generator_provider,
+            reflector_provider=reflector_provider,
+            curator_provider=curator_provider,
+            gigachat_config=gigachat_config,
+            internal_openai_config=internal_openai_config,
+        )
+        gen_prov = generator_provider or api_provider
+        ref_prov = reflector_provider or api_provider
+        cur_prov = curator_provider or api_provider
 
         # Initialize the three agents
-        self.generator = Generator(generator_client, api_provider, generator_model, max_tokens)
-        self.reflector = Reflector(reflector_client, api_provider, reflector_model, max_tokens,
+        self.generator = Generator(generator_client, gen_prov, generator_model, max_tokens)
+        self.reflector = Reflector(reflector_client, ref_prov, reflector_model, max_tokens,
                                    reasoning=reflector_reasoning)
-        self.curator = Curator(curator_client, api_provider, curator_model, max_tokens,
+        self.curator = Curator(curator_client, cur_prov, curator_model, max_tokens,
                                reasoning=curator_reasoning)
         
         # Initialize bulletpoint analyzer if requested and available
@@ -81,7 +83,7 @@ class ACE:
                 curator_model,
                 max_tokens,
                 embedding_model_name=bulletpoint_analyzer_model,
-                api_provider=api_provider,
+                api_provider=cur_prov,
                 bm25_threshold=bulletpoint_analyzer_bm25_threshold,
                 block_cross_section=bulletpoint_analyzer_block_cross_section,
                 reasoning=analyzer_reasoning,

@@ -49,10 +49,18 @@ def parse_args():
                         choices=["offline", "online", "eval_only"])
 
     parser.add_argument("--api_provider", type=str, default="openrouter",
-                        choices=["sambanova", "together", "openai", "commonstack", "openrouter"])
+                        choices=["sambanova", "together", "openai", "commonstack", "openrouter",
+                                 "gigachat", "internal_openai"])
     parser.add_argument("--generator_model", type=str, default="google/gemma-4-31b-it")
     parser.add_argument("--reflector_model", type=str, default="google/gemma-4-31b-it")
     parser.add_argument("--curator_model", type=str, default="google/gemma-4-31b-it")
+
+    parser.add_argument("--generator_provider", type=str, default=None,
+                        help="Override api_provider for generator role")
+    parser.add_argument("--reflector_provider", type=str, default=None,
+                        help="Override api_provider for reflector role")
+    parser.add_argument("--curator_provider", type=str, default=None,
+                        help="Override api_provider for curator role")
 
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--max_num_rounds", type=int, default=2)
@@ -117,9 +125,13 @@ def parse_args():
                              "Use when resuming mid-training so filenames (epoch_N_step_M_playbook.txt) "
                              "reflect the absolute epoch, not the per-process loop counter.")
 
+    # Nested config sections passed through as dicts (not CLI args)
+    _nested_config_keys = {"gigachat", "internal_openai"}
+
     if pre_args.config:
         cfg = _load_run_config(pre_args.config)
-        unknown = set(cfg) - {a.dest for a in parser._actions}
+        known_dests = {a.dest for a in parser._actions} | _nested_config_keys
+        unknown = set(cfg) - known_dests
         if unknown:
             parser.error(f"Unknown keys in {pre_args.config}: {sorted(unknown)}")
         parser.set_defaults(**cfg)
@@ -210,6 +222,9 @@ def main():
     else:
         print("Using empty playbook\n")
 
+    gigachat_config = getattr(args, "gigachat", None)
+    internal_openai_config = getattr(args, "internal_openai", None)
+
     ace_system = ACE(
         api_provider=args.api_provider,
         generator_model=args.generator_model,
@@ -225,6 +240,11 @@ def main():
         reflector_reasoning=args.reflector_reasoning,
         curator_reasoning=args.curator_reasoning,
         analyzer_reasoning=args.analyzer_reasoning,
+        generator_provider=args.generator_provider,
+        reflector_provider=args.reflector_provider,
+        curator_provider=args.curator_provider,
+        gigachat_config=gigachat_config,
+        internal_openai_config=internal_openai_config,
     )
 
     config = {
