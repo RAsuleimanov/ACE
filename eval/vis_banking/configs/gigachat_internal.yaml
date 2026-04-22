@@ -29,7 +29,7 @@ internal_endpoints:
     api_key_env: INTERNAL_LLM_API_KEY
     timeout: 120
   bge_m3:
-    base_url: http://10.27.60.9:2719/v1
+    base_url: http://10.27.69.9:8666/v1
     api_key_env: INTERNAL_LLM_API_KEY
     timeout: 60
 
@@ -58,7 +58,7 @@ max_tokens: 8192
 # Если BGE-M3 на отдельном эндпоинте — поменяй base_url в internal_openai.
 # Для локального inference убери "api:" prefix (потребуется sentence-transformers).
 use_bulletpoint_analyzer: true
-bulletpoint_analyzer_model: api:BAAI/bge-m3
+bulletpoint_analyzer_model: api:app/models/bge-m3
 bulletpoint_analyzer_threshold: 0.82
 bulletpoint_analyzer_bm25_threshold: 0.15
 bulletpoint_analyzer_block_cross_section: true

@@ -86,6 +86,11 @@ class ACE:
                 if emb_endpoint:
                     from utils import _make_internal_openai_client
                     embedding_client = _make_internal_openai_client(emb_endpoint)
+                    print(f"✓ Embedding client → {emb_endpoint.get('base_url', '?')}")
+                else:
+                    print(f"⚠️  No bge_m3/embeddings key in internal_endpoints: {list(internal_endpoints.keys())}")
+            elif bulletpoint_analyzer_model.startswith("api:"):
+                print(f"⚠️  internal_endpoints is {internal_endpoints!r}, embedding falls back to curator client")
             self.bulletpoint_analyzer = BulletpointAnalyzer(
                 curator_client,
                 curator_model,
