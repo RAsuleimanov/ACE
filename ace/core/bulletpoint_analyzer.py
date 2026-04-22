@@ -279,7 +279,23 @@ class BulletpointAnalyzer:
         # Use first bullet's ID as base
         base_id = bullets_group[0]['id']
 
-        prompt = f"""You are merging similar playbook bulletpoints into a single, comprehensive entry.
+        if self.api_provider == "gigachat":
+            prompt = f"""Ты объединяешь похожие пункты плейбука в один комплексный пункт.
+
+Данные похожие пункты:
+{bullets_text}
+
+Объедини их в ОДИН пункт, который охватывает всю важную информацию и устраняет избыточность.
+
+Требования:
+1. Сохрани ID первого пункта: [{base_id}]
+2. Используй суммарные счётчики: helpful={total_helpful} harmful={total_harmful}
+3. Объедини содержание — комплексно, но кратко
+4. Выведи ТОЛЬКО в формате: [{base_id}] helpful={total_helpful} harmful={total_harmful} :: [объединённое содержание]
+
+НЕ добавляй пояснений, только объединённый пункт."""
+        else:
+            prompt = f"""You are merging similar playbook bulletpoints into a single, comprehensive entry.
 
 Given these similar bulletpoints:
 {bullets_text}

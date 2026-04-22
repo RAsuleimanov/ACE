@@ -8,7 +8,10 @@ from typing import Any, Optional
 
 from llm import timed_llm_call
 
-from ..prompts.reflector import REFLECTOR_PROMPT, REFLECTOR_PROMPT_NO_GT
+from ..prompts.reflector import (
+    REFLECTOR_PROMPT, REFLECTOR_PROMPT_NO_GT,
+    REFLECTOR_PROMPT_RU, REFLECTOR_PROMPT_NO_GT_RU,
+)
 
 
 class Reflector:
@@ -65,9 +68,9 @@ class Reflector:
         Returns:
             Tuple of (reflection_content, bullet_tags, call_info)
         """
-        # Select the appropriate prompt
+        _ru = self.api_provider == "gigachat"
         if use_ground_truth and ground_truth:
-            prompt = REFLECTOR_PROMPT.format(
+            prompt = (REFLECTOR_PROMPT_RU if _ru else REFLECTOR_PROMPT).format(
                 question,
                 reasoning_trace,
                 predicted_answer,
@@ -76,7 +79,7 @@ class Reflector:
                 bullets_considered,
             )
         else:
-            prompt = REFLECTOR_PROMPT_NO_GT.format(
+            prompt = (REFLECTOR_PROMPT_NO_GT_RU if _ru else REFLECTOR_PROMPT_NO_GT).format(
                 question,
                 reasoning_trace,
                 predicted_answer,

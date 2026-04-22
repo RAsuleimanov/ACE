@@ -9,7 +9,7 @@ from typing import Any
 
 from llm import timed_llm_call
 
-from ..prompts.generator import GENERATOR_PROMPT
+from ..prompts.generator import GENERATOR_PROMPT, GENERATOR_PROMPT_RU
 
 
 class Generator:
@@ -58,8 +58,8 @@ class Generator:
         Returns:
             Tuple of (full_response, considered_bullet_ids, used_bullet_ids, call_info)
         """
-        # Format the prompt
-        prompt = GENERATOR_PROMPT.format(playbook, reflection, question, context)
+        template = GENERATOR_PROMPT_RU if self.api_provider == "gigachat" else GENERATOR_PROMPT
+        prompt = template.format(playbook, reflection, question, context)
 
         response, call_info = timed_llm_call(
             self.api_client,

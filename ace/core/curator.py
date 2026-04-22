@@ -20,7 +20,10 @@ from playbook_utils import (
     validate_curator_reference_integrity,
 )
 
-from ..prompts.curator import CURATOR_PROMPT, CURATOR_PROMPT_NO_GT
+from ..prompts.curator import (
+    CURATOR_PROMPT, CURATOR_PROMPT_NO_GT,
+    CURATOR_PROMPT_RU, CURATOR_PROMPT_NO_GT_RU,
+)
 
 TARGETED_REPHRASE_PROMPT = """Перефразируй bullet так, чтобы он был самодостаточным.
 Не ссылайся на другие ID — инлайнь суть.
@@ -105,9 +108,9 @@ class Curator:
         # Format playbook stats as JSON string (ensure_ascii=False for Russian readability)
         stats_str = json.dumps(playbook_stats, indent=2, ensure_ascii=False)
 
-        # Select the appropriate prompt
+        _ru = self.api_provider == "gigachat"
         if use_ground_truth:
-            prompt = CURATOR_PROMPT.format(
+            prompt = (CURATOR_PROMPT_RU if _ru else CURATOR_PROMPT).format(
                 current_step=current_step,
                 total_samples=total_samples,
                 token_budget=token_budget,
@@ -117,7 +120,7 @@ class Curator:
                 question_context=question_context,
             )
         else:
-            prompt = CURATOR_PROMPT_NO_GT.format(
+            prompt = (CURATOR_PROMPT_NO_GT_RU if _ru else CURATOR_PROMPT_NO_GT).format(
                 current_step=current_step,
                 total_samples=total_samples,
                 token_budget=token_budget,
