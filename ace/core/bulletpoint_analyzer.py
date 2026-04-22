@@ -56,19 +56,16 @@ class BulletpointAnalyzer:
         bm25_threshold: float = 0.0,
         block_cross_section: bool = True,
         reasoning: Optional[dict] = None,
+        embedding_client=None,
     ):
         """Initialize the bulletpoint analyzer.
 
-        `api_provider` must match the client's provider (openrouter/openai/
-        sambanova/...) so the per-provider max_tokens key is right in
-        `timed_llm_call`. Default 'openai' for back-compat.
-
-        `bm25_threshold` (0.0-1.0): if > 0, pairs must clear BOTH dense cosine
-        AND normalised BM25 score to be candidates for merge. Protects against
-        doc-ID confusion (bullets about doc 37 vs doc 39 share vocab but not
-        the IDs). Set to 0 to disable the lexical gate.
+        `client` is used for LLM merge calls; `embedding_client` (if given) is
+        used for /v1/embeddings when embedding_model_name starts with "api:".
+        Falls back to `client` when embedding_client is None.
         """
         self.client = client
+        self.embedding_client = embedding_client or client
         self.model = model
         self.max_tokens = max_tokens
         self.embedding_model_name = embedding_model_name
@@ -146,7 +143,7 @@ class BulletpointAnalyzer:
             last_err = None
             for attempt in range(5):
                 try:
-                    resp = self.client.embeddings.create(model=model_id, input=contents)
+                    resp = self.embedding_client.embeddings.create(model=model_id, input=contents)
                     if not resp.data:
                         raise ValueError("No embedding data received")
                     embeddings = np.array([e.embedding for e in resp.data], dtype=np.float32)

@@ -2,12 +2,12 @@ task_name: vis_banking
 mode: offline
 
 # ── Provider routing ─────────────────────────────────────────────────
-# api_provider is the default; per-role overrides below.
+# api_provider is the default; per-role overrides reference named endpoints.
 api_provider: gigachat
 
 generator_provider: gigachat
-reflector_provider: internal_openai     # vLLM / TGI на внутренней машине
-curator_provider: internal_openai
+reflector_provider: qwen32b             # имя из internal_endpoints
+curator_provider: qwen32b
 
 # ── GigaChat (mTLS) ─────────────────────────────────────────────────
 gigachat:
@@ -20,17 +20,22 @@ gigachat:
   repetition_penalty: 1
   timeout: 120
 
-# ── Internal OpenAI-compatible endpoint ──────────────────────────────
-# Подставь свой IP и модель. api_key_env = имя env-переменной с ключом
-# (или "dummy" если эндпоинт без авторизации).
-internal_openai:
-  base_url: http://10.27.60.9:2717/v1
-  api_key_env: INTERNAL_LLM_API_KEY
-  timeout: 120
+# ── Internal endpoints (vLLM/TGI) ───────────────────────────────────
+# Каждый ключ — имя эндпоинта, используется в *_provider выше.
+# У разных моделей могут быть разные порты.
+internal_endpoints:
+  qwen32b:
+    base_url: http://10.27.60.9:2717/v1
+    api_key_env: INTERNAL_LLM_API_KEY
+    timeout: 120
+  bge_m3:
+    base_url: http://10.27.60.9:2719/v1
+    api_key_env: INTERNAL_LLM_API_KEY
+    timeout: 60
 
 # ── Models ───────────────────────────────────────────────────────────
 generator_model: GigaChat-2-Max
-reflector_model: qwen32b                # имя модели на vLLM
+reflector_model: qwen32b
 curator_model: qwen32b
 
 # ── Paths ────────────────────────────────────────────────────────────
@@ -49,9 +54,11 @@ batch_size: 5
 max_tokens: 8192
 
 # ── BulletpointAnalyzer ─────────────────────────────────────────────
-# Локальный BGE-M3 (без интернета). Убедись что веса скачаны заранее.
+# api: prefix → вызов /v1/embeddings через curator_client (internal_openai).
+# Если BGE-M3 на отдельном эндпоинте — поменяй base_url в internal_openai.
+# Для локального inference убери "api:" prefix (потребуется sentence-transformers).
 use_bulletpoint_analyzer: true
-bulletpoint_analyzer_model: BAAI/bge-m3
+bulletpoint_analyzer_model: api:BAAI/bge-m3
 bulletpoint_analyzer_threshold: 0.82
 bulletpoint_analyzer_bm25_threshold: 0.15
 bulletpoint_analyzer_block_cross_section: true

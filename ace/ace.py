@@ -52,6 +52,7 @@ class ACE:
         curator_provider: Optional[str] = None,
         gigachat_config: Optional[dict] = None,
         internal_openai_config: Optional[dict] = None,
+        internal_endpoints: Optional[dict] = None,
     ):
         # Initialize API clients
         generator_client, reflector_client, curator_client = initialize_clients(
@@ -61,6 +62,7 @@ class ACE:
             curator_provider=curator_provider,
             gigachat_config=gigachat_config,
             internal_openai_config=internal_openai_config,
+            internal_endpoints=internal_endpoints,
         )
         gen_prov = generator_provider or api_provider
         ref_prov = reflector_provider or api_provider
@@ -78,6 +80,12 @@ class ACE:
         self.bulletpoint_analyzer_threshold = bulletpoint_analyzer_threshold
         
         if use_bulletpoint_analyzer:
+            embedding_client = None
+            if internal_endpoints and bulletpoint_analyzer_model.startswith("api:"):
+                emb_endpoint = internal_endpoints.get("bge_m3") or internal_endpoints.get("embeddings")
+                if emb_endpoint:
+                    from utils import _make_internal_openai_client
+                    embedding_client = _make_internal_openai_client(emb_endpoint)
             self.bulletpoint_analyzer = BulletpointAnalyzer(
                 curator_client,
                 curator_model,
@@ -87,6 +95,7 @@ class ACE:
                 bm25_threshold=bulletpoint_analyzer_bm25_threshold,
                 block_cross_section=bulletpoint_analyzer_block_cross_section,
                 reasoning=analyzer_reasoning,
+                embedding_client=embedding_client,
             )
             print(f"✓ BulletpointAnalyzer initialized (threshold={bulletpoint_analyzer_threshold})")
         else:

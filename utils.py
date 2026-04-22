@@ -48,8 +48,16 @@ def _make_internal_openai_client(internal_config: dict) -> openai.OpenAI:
     )
 
 
-def _make_client_for_role(provider_name: str, gigachat_config=None, internal_openai_config=None):
-    """Create a single client for the given provider name."""
+def _make_client_for_role(provider_name: str, gigachat_config=None,
+                          internal_openai_config=None, internal_endpoints=None):
+    """Create a single client for the given provider name.
+
+    Resolution order:
+    1. "gigachat" → GigaChatClient from gigachat_config
+    2. "internal_openai" → legacy single-endpoint from internal_openai_config
+    3. key in internal_endpoints → named vLLM/TGI endpoint
+    4. known cloud provider name (openrouter, openai, …)
+    """
     if provider_name == "gigachat":
         if not gigachat_config:
             raise ValueError("gigachat provider requires 'gigachat' section in config")
@@ -59,6 +67,8 @@ def _make_client_for_role(provider_name: str, gigachat_config=None, internal_ope
         if not internal_openai_config:
             raise ValueError("internal_openai provider requires 'internal_openai' section in config")
         return _make_internal_openai_client(internal_openai_config)
+    elif internal_endpoints and provider_name in internal_endpoints:
+        return _make_internal_openai_client(internal_endpoints[provider_name])
     else:
         return _make_openai_client(provider_name)
 
@@ -70,18 +80,23 @@ def initialize_clients(
     curator_provider=None,
     gigachat_config=None,
     internal_openai_config=None,
+    internal_endpoints=None,
 ):
     """Initialize separate clients for generator, reflector, and curator.
 
     Per-role provider overrides fall back to api_provider when None.
+    Named endpoints in internal_endpoints are resolved by provider name.
     """
     gen_prov = generator_provider or api_provider
     ref_prov = reflector_provider or api_provider
     cur_prov = curator_provider or api_provider
 
-    generator_client = _make_client_for_role(gen_prov, gigachat_config, internal_openai_config)
-    reflector_client = _make_client_for_role(ref_prov, gigachat_config, internal_openai_config)
-    curator_client = _make_client_for_role(cur_prov, gigachat_config, internal_openai_config)
+    mk = dict(gigachat_config=gigachat_config,
+              internal_openai_config=internal_openai_config,
+              internal_endpoints=internal_endpoints)
+    generator_client = _make_client_for_role(gen_prov, **mk)
+    reflector_client = _make_client_for_role(ref_prov, **mk)
+    curator_client = _make_client_for_role(cur_prov, **mk)
 
     providers_used = {gen_prov, ref_prov, cur_prov}
     if len(providers_used) == 1:

@@ -126,7 +126,7 @@ def parse_args():
                              "reflect the absolute epoch, not the per-process loop counter.")
 
     # Nested config sections passed through as dicts (not CLI args)
-    _nested_config_keys = {"gigachat", "internal_openai"}
+    _nested_config_keys = {"gigachat", "internal_openai", "internal_endpoints"}
 
     if pre_args.config:
         cfg = _load_run_config(pre_args.config)
@@ -245,6 +245,7 @@ def main():
         curator_provider=args.curator_provider,
         gigachat_config=gigachat_config,
         internal_openai_config=internal_openai_config,
+        internal_endpoints=getattr(args, "internal_endpoints", None),
     )
 
     config = {
