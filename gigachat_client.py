@@ -50,11 +50,11 @@ class ReflectorOutput(BaseModel):
 class _CuratorOperation(BaseModel):
     """Single curator operation."""
     type: str = Field(description="Operation type: ADD, UPDATE, MERGE, or ARCHIVE")
-    section: Optional[str] = Field(default=None, description="Target section for ADD/MERGE")
-    content: Optional[str] = Field(default=None, description="Bullet content for ADD/UPDATE/MERGE")
-    bullet_id: Optional[str] = Field(default=None, description="Bullet ID for UPDATE/ARCHIVE")
-    source_ids: Optional[List[str]] = Field(default=None, description="Source bullet IDs for MERGE")
-    reason: Optional[str] = Field(default=None, description="Reason for ARCHIVE")
+    section: str = Field(default="", description="Target section (required for ADD and MERGE)")
+    content: str = Field(default="", description="Bullet content (required for ADD, UPDATE, MERGE)")
+    bullet_id: str = Field(default="", description="Existing bullet ID (required for UPDATE and ARCHIVE)")
+    source_ids: List[str] = Field(default_factory=list, description="Source bullet IDs (required for MERGE)")
+    reason: str = Field(default="", description="Reason (required for ARCHIVE)")
 
 
 class CuratorOutput(BaseModel):
@@ -172,9 +172,25 @@ class _Completions:
     @classmethod
     def _clean_structured(cls, obj: BaseModel) -> str:
         """Serialize Pydantic object to JSON, stripping GigaChat artifacts from strings."""
-        data = obj.model_dump(exclude_none=True)
+        data = obj.model_dump()
         cls._strip_artifacts(data)
+        cls._drop_empty(data)
         return json.dumps(data, ensure_ascii=False)
+
+    @staticmethod
+    def _drop_empty(obj):
+        """Remove empty-string and empty-list values (Pydantic defaults) from nested dicts."""
+        if isinstance(obj, dict):
+            for k in list(obj.keys()):
+                v = obj[k]
+                if v == "" or v == []:
+                    del obj[k]
+                elif isinstance(v, (dict, list)):
+                    _Completions._drop_empty(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, (dict, list)):
+                    _Completions._drop_empty(item)
 
     @classmethod
     def _strip_artifacts(cls, obj):
