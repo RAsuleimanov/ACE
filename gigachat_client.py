@@ -12,6 +12,7 @@ The role is inferred from the prompt content so the correct schema is applied.
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
@@ -114,6 +115,8 @@ class _Completions:
             return "generator"
         return None
 
+    _JSON_TRAIL_RE = re.compile(r'[\s,{}\[\]]+$')
+
     def create(self, *, model=None, messages=None, temperature=0.0, **kwargs):
         from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
@@ -147,9 +150,10 @@ class _Completions:
             detected = role_hint or self._detect_role(messages)
             schema = self._ROLE_SCHEMAS.get(detected) if detected else None
             if schema:
-                bound = self._gc.bind_tools([schema], tool_choice=schema.__name__)
-                result = bound.invoke(lc_messages)
-                content = self._extract_fc_content(result)
+                structured = self._gc.with_structured_output(schema)
+                obj = structured.invoke(lc_messages)
+                content = self._clean_structured(obj)
+                result = obj
             else:
                 result = self._gc.invoke(lc_messages)
                 content = result.content
@@ -165,16 +169,28 @@ class _Completions:
             model=model or self._default_model,
         )
 
-    @staticmethod
-    def _extract_fc_content(result) -> str:
-        """Extract structured content from a function-calling response."""
-        if result.tool_calls:
-            return json.dumps(result.tool_calls[0]["args"], ensure_ascii=False)
-        fc = (getattr(result, "additional_kwargs", None) or {}).get("function_call")
-        if fc and "arguments" in fc:
-            args = fc["arguments"]
-            return args if isinstance(args, str) else json.dumps(args, ensure_ascii=False)
-        return result.content or ""
+    @classmethod
+    def _clean_structured(cls, obj: BaseModel) -> str:
+        """Serialize Pydantic object to JSON, stripping GigaChat artifacts from strings."""
+        data = obj.model_dump(exclude_none=True)
+        cls._strip_artifacts(data)
+        return json.dumps(data, ensure_ascii=False)
+
+    @classmethod
+    def _strip_artifacts(cls, obj):
+        """Recursively strip trailing JSON syntax garbage from string values."""
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, str):
+                    obj[k] = cls._JSON_TRAIL_RE.sub('', v).strip()
+                else:
+                    cls._strip_artifacts(v)
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                if isinstance(v, str):
+                    obj[i] = cls._JSON_TRAIL_RE.sub('', v).strip()
+                else:
+                    cls._strip_artifacts(v)
 
     @staticmethod
     def _extract_usage(result) -> "_Usage":
