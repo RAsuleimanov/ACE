@@ -150,14 +150,18 @@ class _Completions:
             detected = role_hint or self._detect_role(messages)
             schema = self._ROLE_SCHEMAS.get(detected) if detected else None
             if schema:
-                structured = self._gc.with_structured_output(schema)
-                obj = structured.invoke(lc_messages)
-                if obj is None:
-                    result = self._gc.invoke(lc_messages)
-                    content = result.content or ""
+                bound = self._gc.bind_tools([schema], tool_choice=schema.__name__)
+                result = bound.invoke(lc_messages)
+                raw_args = self._extract_fc_args(result)
+                if raw_args is not None:
+                    cleaned = self._normalize_keys(raw_args)
+                    try:
+                        obj = schema.model_validate(cleaned)
+                        content = self._clean_structured(obj)
+                    except Exception:
+                        content = json.dumps(cleaned, ensure_ascii=False)
                 else:
-                    content = self._clean_structured(obj)
-                    result = obj
+                    content = result.content or ""
             else:
                 result = self._gc.invoke(lc_messages)
                 content = result.content
@@ -172,6 +176,31 @@ class _Completions:
             usage=usage,
             model=model or self._default_model,
         )
+
+    @staticmethod
+    def _extract_fc_args(result) -> dict | None:
+        """Extract raw args dict from a function-calling response."""
+        if result.tool_calls:
+            return result.tool_calls[0].get("args")
+        fc = (getattr(result, "additional_kwargs", None) or {}).get("function_call")
+        if fc and "arguments" in fc:
+            args = fc["arguments"]
+            if isinstance(args, str):
+                try:
+                    return json.loads(args)
+                except json.JSONDecodeError:
+                    return None
+            return args
+        return None
+
+    @classmethod
+    def _normalize_keys(cls, obj):
+        """Recursively strip leading/trailing spaces from dict keys."""
+        if isinstance(obj, dict):
+            return {k.strip(): cls._normalize_keys(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [cls._normalize_keys(v) for v in obj]
+        return obj
 
     @classmethod
     def _clean_structured(cls, obj: BaseModel) -> str:
