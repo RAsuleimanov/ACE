@@ -619,6 +619,9 @@ class Curator:
         if not operations_info:
             raise ValueError("Failed to extract valid JSON from curator response")
 
+        # Normalize keys — GigaChat sometimes returns " operations" with a leading space
+        operations_info = {k.strip(): v for k, v in operations_info.items()}
+
         # Validate required fields
         if "reasoning" not in operations_info:
             raise ValueError("JSON missing required 'reasoning' field")
@@ -638,6 +641,11 @@ class Curator:
             if not isinstance(op, dict):
                 raise ValueError(f"Operation {i} must be a dictionary")
 
+            # Strip None values from Pydantic Optional fields
+            for k in list(op.keys()):
+                if op[k] is None:
+                    del op[k]
+
             if "type" not in op:
                 raise ValueError(f"Operation {i} missing required 'type' field")
 
@@ -647,6 +655,8 @@ class Curator:
                 raise ValueError(f"Unsupported operation type '{op_type}'")
 
             if op_type == "ADD":
+                if not op.get("section"):
+                    op["section"] = "Инструкции"
                 required_fields = {"type", "section", "content"}
                 missing_fields = required_fields - set(op.keys())
                 if missing_fields:
