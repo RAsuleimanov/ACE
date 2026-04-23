@@ -152,8 +152,12 @@ class _Completions:
             if schema:
                 structured = self._gc.with_structured_output(schema)
                 obj = structured.invoke(lc_messages)
-                content = self._clean_structured(obj)
-                result = obj
+                if obj is None:
+                    result = self._gc.invoke(lc_messages)
+                    content = result.content or ""
+                else:
+                    content = self._clean_structured(obj)
+                    result = obj
             else:
                 result = self._gc.invoke(lc_messages)
                 content = result.content
