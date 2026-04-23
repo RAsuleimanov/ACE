@@ -131,8 +131,10 @@ class _Completions:
             and response_format.get("type") == "json_object"
         )
 
+        role_hint = kwargs.pop("role_hint", None)
+
         if use_fc:
-            detected = self._detect_role(messages)
+            detected = role_hint or self._detect_role(messages)
             schema = self._ROLE_SCHEMAS.get(detected) if detected else None
             if schema:
                 bound = self._gc.bind_tools([schema], tool_choice=schema.__name__)

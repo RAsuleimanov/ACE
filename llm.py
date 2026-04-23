@@ -77,6 +77,8 @@ def timed_llm_call(client, api_provider, model, prompt, role, call_id, max_token
             # Add JSON mode if requested
             if use_json_mode:
                 api_params["response_format"] = {"type": "json_object"}
+                if api_provider == "gigachat":
+                    api_params["role_hint"] = role
             # GPT-5.x reasoning-effort hint (passed through if the provider
             # supports it; ignored by OpenAI API on non-reasoning models)
             if reasoning_effort:
