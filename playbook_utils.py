@@ -718,7 +718,7 @@ def apply_curator_operations(
 
             bullet = items[item_index]["bullet"]
             bullet["content"] = sanitized_content or bullet["content"]
-            bullet["status"] = "candidate"
+            bullet["created_step"] = current_step
             manifest[op_idx] = bullet_id
             print(f"  Updated bullet {bullet_id}")
             continue
