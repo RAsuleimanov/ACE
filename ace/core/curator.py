@@ -6,6 +6,7 @@ Manages playbook operations (ADD, UPDATE, MERGE, ARCHIVE).
 import builtins
 import functools
 import json
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -599,6 +600,19 @@ class Curator:
 
         return result
 
+    _BULLET_ID_RE = re.compile(r'\[([a-zA-Zа-яА-ЯёЁ]{2,}-\d{4,5})\]')
+
+    @classmethod
+    def _extract_bullet_id_from_content(cls, content: str) -> str | None:
+        """Extract first [prefix-NNNNN] bullet ID from content string."""
+        m = cls._BULLET_ID_RE.search(content)
+        return m.group(1) if m else None
+
+    @classmethod
+    def _extract_all_bullet_ids(cls, content: str) -> list[str]:
+        """Extract all unique [prefix-NNNNN] bullet IDs from content string."""
+        return list(dict.fromkeys(cls._BULLET_ID_RE.findall(content)))
+
     def _extract_and_validate_operations(self, response: str) -> dict[str, Any]:
         """
         Extract and validate operations from curator response.
@@ -636,49 +650,78 @@ class Curator:
         if not isinstance(operations_info["operations"], list):
             raise ValueError("'operations' field must be a list")
 
-        # Validate operations structure
+        # Validate operations structure — drop invalid ops, keep valid ones
+        valid_ops = []
+        dropped_ops = []
         for i, op in enumerate(operations_info["operations"]):
-            if not isinstance(op, dict):
-                raise ValueError(f"Operation {i} must be a dictionary")
+            error = self._validate_single_operation(i, op)
+            if error:
+                dropped_ops.append((i, error))
+            else:
+                valid_ops.append(op)
 
-            # Strip None values from Pydantic Optional fields
-            for k in list(op.keys()):
-                if op[k] is None:
-                    del op[k]
+        if dropped_ops:
+            for idx, err in dropped_ops:
+                print(f"  ⚠️  Dropping operation {idx}: {err}")
 
-            if "type" not in op:
-                raise ValueError(f"Operation {i} missing required 'type' field")
+        if not valid_ops and not dropped_ops:
+            pass
+        elif not valid_ops and dropped_ops:
+            raise ValueError(
+                f"All {len(dropped_ops)} operations invalid: "
+                + "; ".join(e for _, e in dropped_ops)
+            )
 
-            op_type = op["type"]
-
-            if op_type not in ["ADD", "UPDATE", "MERGE", "ARCHIVE", "CREATE_META"]:
-                raise ValueError(f"Unsupported operation type '{op_type}'")
-
-            if op_type == "ADD":
-                if not op.get("section"):
-                    op["section"] = "Инструкции"
-                required_fields = {"type", "section", "content"}
-                missing_fields = required_fields - set(op.keys())
-                if missing_fields:
-                    raise ValueError(f"ADD operation {i} missing fields: {list(missing_fields)}")
-            elif op_type == "UPDATE":
-                required_fields = {"type", "bullet_id", "content"}
-                missing_fields = required_fields - set(op.keys())
-                if missing_fields:
-                    raise ValueError(f"UPDATE operation {i} missing fields: {list(missing_fields)}")
-            elif op_type == "MERGE":
-                required_fields = {"type", "source_ids", "section", "content"}
-                missing_fields = required_fields - set(op.keys())
-                if missing_fields:
-                    raise ValueError(f"MERGE operation {i} missing fields: {list(missing_fields)}")
-                if len(op.get("source_ids", [])) < 2:
-                    raise ValueError(f"MERGE operation {i} must include at least two source_ids")
-            elif op_type == "ARCHIVE":
-                required_fields = {"type", "bullet_id", "reason"}
-                missing_fields = required_fields - set(op.keys())
-                if missing_fields:
-                    raise ValueError(
-                        f"ARCHIVE operation {i} missing fields: {list(missing_fields)}"
-                    )
-
+        operations_info["operations"] = valid_ops
         return operations_info
+
+    def _validate_single_operation(self, i: int, op: Any) -> str | None:
+        """Validate one operation, applying auto-fixes. Returns error string or None."""
+        if not isinstance(op, dict):
+            return f"Operation {i} must be a dictionary"
+
+        for k in list(op.keys()):
+            if op[k] is None:
+                del op[k]
+
+        if "type" not in op:
+            return f"Operation {i} missing required 'type' field"
+
+        op_type = op["type"]
+
+        if op_type not in ["ADD", "UPDATE", "MERGE", "ARCHIVE", "CREATE_META"]:
+            return f"Unsupported operation type '{op_type}'"
+
+        if op_type in ("UPDATE", "ARCHIVE", "MERGE") and not op.get("bullet_id"):
+            extracted = self._extract_bullet_id_from_content(op.get("content", ""))
+            if extracted:
+                op["bullet_id"] = extracted
+
+        if op_type == "ADD":
+            if not op.get("section"):
+                op["section"] = "Инструкции"
+            missing = {"type", "section", "content"} - set(op.keys())
+            if missing:
+                return f"ADD operation {i} missing fields: {list(missing)}"
+        elif op_type == "UPDATE":
+            missing = {"type", "bullet_id", "content"} - set(op.keys())
+            if missing:
+                return f"UPDATE operation {i} missing fields: {list(missing)}"
+        elif op_type == "MERGE":
+            if not op.get("source_ids"):
+                ids = self._extract_all_bullet_ids(op.get("content", ""))
+                if len(ids) >= 2:
+                    op["source_ids"] = ids
+            missing = {"type", "source_ids", "section", "content"} - set(op.keys())
+            if missing:
+                return f"MERGE operation {i} missing fields: {list(missing)}"
+            if len(op.get("source_ids", [])) < 2:
+                return f"MERGE operation {i} must include at least two source_ids"
+        elif op_type == "ARCHIVE":
+            if not op.get("reason"):
+                op["reason"] = op.get("content", "") or "archived by curator"
+            missing = {"type", "bullet_id", "reason"} - set(op.keys())
+            if missing:
+                return f"ARCHIVE operation {i} missing fields: {list(missing)}"
+
+        return None
