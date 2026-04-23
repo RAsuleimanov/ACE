@@ -46,10 +46,20 @@ class ReflectorOutput(BaseModel):
     bullet_tags: List[_BulletTag] = Field(description="Tags for each considered bullet")
 
 
+class _CuratorOperation(BaseModel):
+    """Single curator operation."""
+    type: str = Field(description="Operation type: ADD, UPDATE, MERGE, or ARCHIVE")
+    section: Optional[str] = Field(default=None, description="Target section for ADD/MERGE")
+    content: Optional[str] = Field(default=None, description="Bullet content for ADD/UPDATE/MERGE")
+    bullet_id: Optional[str] = Field(default=None, description="Bullet ID for UPDATE/ARCHIVE")
+    source_ids: Optional[List[str]] = Field(default=None, description="Source bullet IDs for MERGE")
+    reason: Optional[str] = Field(default=None, description="Reason for ARCHIVE")
+
+
 class CuratorOutput(BaseModel):
     """Curator response for ACE system."""
     reasoning: str = Field(description="Analysis of playbook state")
-    operations: List[dict] = Field(description="List of ADD/UPDATE/MERGE/ARCHIVE operations")
+    operations: List[_CuratorOperation] = Field(description="List of ADD/UPDATE/MERGE/ARCHIVE operations")
 
 
 @dataclass
