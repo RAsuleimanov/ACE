@@ -725,7 +725,7 @@ class ACE:
             self.playbook, self.next_global_id, operations, _ = self.curator.curate(
                 current_playbook=self.playbook,
                 recent_reflection=reflection_content,
-                question_context=context,
+                question_context=context if context else question,
                 current_step=step,
                 total_samples=total_samples,
                 token_budget=token_budget,
@@ -1051,9 +1051,9 @@ class ACE:
                         + "\n\n---\n\n".join(reflection_blocks)
                     )
 
-                    # Aggregate context (drop duplicates/empty)
-                    contexts = [smp.get('context','') for smp in batch if smp.get('context')]
-                    aggregated_context = "\n\n".join(contexts) if contexts else ""
+                    # Aggregate context — fall back to question when context is empty
+                    contexts = [smp.get('context') or smp.get('question', '') for smp in batch]
+                    aggregated_context = "\n\n".join(c for c in contexts if c)
 
                     print(f"\n--- Running 1 Curator on aggregated batch (steps {batch_steps[0]}-{batch_steps[-1]}, {len(batch_steps)} reflections) ---")
                     # Discard curator's returned next_global_id and updated_playbook —
